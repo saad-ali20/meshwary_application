@@ -1,0 +1,46 @@
+{
+  "@@locale": "ar",
+  "@@last_modified": "2026-10-17",
+
+  "appName": "مشواري",
+  "@appName": { "description": "Application name" },
+
+  "loading": "جارٍ التحميل...",
+  "@loading": { "description": "Generic loading message" },
+
+  "retry": "إعادة المحاولة",
+  "@retry": { "description": "Retry button label" },
+
+  "cancel": "إلغاء",
+  "@cancel": { "description": "Cancel button label" },
+
+  "confirm": "تأكيد",
+  "@confirm": { "description": "Confirm button label" },
+
+  "save": "حفظ",
+  "@save": { "description": "Save button label" },
+
+  "next": "التالي",
+  "@next": { "description": "Next button label" },
+
+  "back": "رجوع",
+  "@back": { "description": "Back button label" },
+
+  "errorGeneric": "حدث خطأ، يرجى المحاولة مجدداً.",
+  "@errorGeneric": { "description": "Generic error message" },
+
+  "errorNetwork": "تعذّر الاتصال بالإنترنت. تحقق من الشبكة وأعد المحاولة.",
+  "@errorNetwork": { "description": "Network error message" },
+
+  "errorTimeout": "انتهت مهلة الطلب. يرجى المحاولة مجدداً.",
+  "@errorTimeout": { "description": "Request timeout message" },
+
+  "errorUnauthorized": "انتهت جلستك. يرجى تسجيل الدخول مجدداً.",
+  "@errorUnauthorized": { "description": "Unauthorized / session expired message" },
+
+  "designPreviewTitle": "معاينة نظام التصميم",
+  "@designPreviewTitle": { "description": "Title of the design system preview screen" },
+
+  "designPreviewSubtitle": "مشواري — الهوية البصرية",
+  "@designPreviewSubtitle": { "description": "Subtitle of the design system preview screen" }
+}

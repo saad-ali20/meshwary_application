@@ -1,0 +1,19 @@
+{
+  "@@locale": "en",
+  "@@last_modified": "2026-10-17",
+
+  "appName": "Meshwary",
+  "loading": "Loading...",
+  "retry": "Retry",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "save": "Save",
+  "next": "Next",
+  "back": "Back",
+  "errorGeneric": "Something went wrong. Please try again.",
+  "errorNetwork": "No internet connection. Check your network and try again.",
+  "errorTimeout": "Request timed out. Please try again.",
+  "errorUnauthorized": "Your session has expired. Please sign in again.",
+  "designPreviewTitle": "Design System Preview",
+  "designPreviewSubtitle": "Meshwary — Visual Identity"
+}
