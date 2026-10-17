@@ -33,7 +33,7 @@ dependencies:
   shared_preferences: ^2.5.6
 
   # Connectivity
-  connectivity_plus: ^7.3.2
+  connectivity_plus: ^6.1.0
 
   # Localization & typography
   intl: ^0.20.2

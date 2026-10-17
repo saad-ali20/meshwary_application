@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 import '../../features/design_preview/presentation/pages/design_preview_page.dart';
+import '../../features/splash/presentation/pages/splash_page.dart';
 import 'routes.dart';
 
 /// Meshwary declarative router.
@@ -10,9 +11,14 @@ import 'routes.dart';
 /// Guards will inspect [SecureStorage] / [PreferencesStorage] to redirect
 /// unauthenticated or unverified users to the appropriate flow.
 final appRouter = GoRouter(
-  initialLocation: AppRoutes.designPreview,
+  initialLocation: AppRoutes.splash,
   debugLogDiagnostics: true,
   routes: [
+    GoRoute(
+      path: AppRoutes.splash,
+      name: 'splash',
+      builder: (context, state) => const SplashPage(),
+    ),
     GoRoute(
       path: AppRoutes.designPreview,
       name: 'design-preview',
@@ -20,11 +26,6 @@ final appRouter = GoRouter(
     ),
 
     // ── Auth routes (scaffolded for future implementation) ──────────────────
-    // GoRoute(
-    //   path: AppRoutes.splash,
-    //   name: 'splash',
-    //   builder: (context, state) => const SplashPage(),
-    // ),
     // GoRoute(
     //   path: AppRoutes.onboarding,
     //   name: 'onboarding',

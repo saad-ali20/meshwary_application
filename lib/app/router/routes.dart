@@ -2,10 +2,10 @@
 /// Use these constants instead of hard-coding path strings.
 abstract final class AppRoutes {
   // ── Foundation ─────────────────────────────────────────────────────────────
-  static const String designPreview = '/';
+  static const String splash = '/';
+  static const String designPreview = '/design-preview';
 
   // ── Auth (future) ──────────────────────────────────────────────────────────
-  static const String splash = '/splash';
   static const String onboarding = '/onboarding';
   static const String phoneAuth = '/auth/phone';
   static const String otpVerification = '/auth/otp';
