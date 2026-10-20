@@ -205,7 +205,7 @@ abstract final class AppTheme {
           minimumSize: const Size(double.infinity, AppSpacing.buttonHeight),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
           shape: const RoundedRectangleBorder(borderRadius: AppRadius.button),
-          textStyle: GoogleFonts.cairo(
+          textStyle: TextStyle(fontFamily: 'Cairo', 
             fontSize: 16,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.2,
@@ -222,7 +222,7 @@ abstract final class AppTheme {
           minimumSize: const Size(double.infinity, AppSpacing.buttonHeight),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
           shape: const RoundedRectangleBorder(borderRadius: AppRadius.button),
-          textStyle: GoogleFonts.cairo(
+          textStyle: TextStyle(fontFamily: 'Cairo', 
             fontSize: 16,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.2,
@@ -239,7 +239,7 @@ abstract final class AppTheme {
         vertical: AppSpacing.sm,
       ),
       shape: const RoundedRectangleBorder(borderRadius: AppRadius.button),
-      textStyle: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.w600),
+      textStyle: TextStyle(fontFamily: 'Cairo', fontSize: 14, fontWeight: FontWeight.w600),
     ),
   );
 
@@ -317,7 +317,7 @@ abstract final class AppTheme {
   // ── SnackBar ────────────────────────────────────────────────────────────────
   static final SnackBarThemeData _snackBarTheme = SnackBarThemeData(
     backgroundColor: AppColors.cardElevated,
-    contentTextStyle: GoogleFonts.cairo(
+    contentTextStyle: TextStyle(fontFamily: 'Cairo', 
       color: AppColors.textPrimary,
       fontSize: 14,
       fontWeight: FontWeight.w500,

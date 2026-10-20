@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 import '../../features/design_preview/presentation/pages/design_preview_page.dart';
+import '../../features/onboarding/presentation/pages/onboarding_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import 'routes.dart';
 
@@ -18,6 +19,11 @@ final appRouter = GoRouter(
       path: AppRoutes.splash,
       name: 'splash',
       builder: (context, state) => const SplashPage(),
+    ),
+    GoRoute(
+      path: AppRoutes.onboarding,
+      name: 'onboarding',
+      builder: (context, state) => const OnboardingPage(),
     ),
     GoRoute(
       path: AppRoutes.designPreview,

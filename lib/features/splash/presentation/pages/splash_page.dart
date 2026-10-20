@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../app/router/routes.dart';
 import '../../../../core/theme/app_colors.dart';
 
 /// Meshwary splash screen.
@@ -49,7 +51,10 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
       curve: Curves.easeInOut,
     );
     _progressAnimation.addListener(_onProgressTick);
-    _progressController.forward();
+    _progressController.forward().then((_) {
+      // Navigate to onboarding when loading is complete
+      if (mounted) context.go(AppRoutes.onboarding);
+    });
   }
 
   void _onProgressTick() {
@@ -148,7 +153,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                   // ── Tagline ──────────────────────────────────────────────
                   // Text(
                   //   'سكوتر الصعيد',
-                  //   style: GoogleFonts.cairo(
+                  //   style: TextStyle(fontFamily: 'Cairo', 
                   //     fontSize: 18,
                   //     fontWeight: FontWeight.w600,
                   //     color: AppColors.textPrimary.withAlpha(200),
@@ -202,7 +207,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                             const SizedBox(height: 14),
                             Text(
                               '$percent%',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(fontFamily: 'Cairo', 
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.textPrimary.withAlpha(180),
@@ -218,7 +223,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                   // ── Loading text ─────────────────────────────────────────
                   Text(
                     'جاري التحميل...',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                       color: AppColors.textSecondary,
