@@ -1,4 +1,7 @@
 import 'package:go_router/go_router.dart';
+import '../../features/auth/presentation/pages/phone_auth_page.dart';
+import '../../features/auth/presentation/pages/otp_verification_page.dart';
+import '../../features/auth/presentation/pages/profile_completion_page.dart';
 import '../../features/design_preview/presentation/pages/design_preview_page.dart';
 import '../../features/onboarding/presentation/pages/onboarding_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
@@ -31,23 +34,26 @@ final appRouter = GoRouter(
       builder: (context, state) => const DesignPreviewPage(),
     ),
 
-    // ── Auth routes (scaffolded for future implementation) ──────────────────
-    // GoRoute(
-    //   path: AppRoutes.onboarding,
-    //   name: 'onboarding',
-    //   builder: (context, state) => const OnboardingPage(),
-    // ),
-    // GoRoute(
-    //   path: AppRoutes.phoneAuth,
-    //   name: 'phone-auth',
-    //   builder: (context, state) => const PhoneAuthPage(),
-    // ),
-
-    // ── Main app shell (future shell route with bottom nav) ─────────────────
-    // ShellRoute(
-    //   builder: (context, state, child) => AppShell(child: child),
-    //   routes: [ ... ],
-    // ),
+    // ── Auth routes ─────────────────────────────────────────────────────────
+    GoRoute(
+      path: AppRoutes.phoneAuth,
+      name: 'phone-auth',
+      builder: (context, state) => const PhoneAuthPage(),
+    ),
+    GoRoute(
+      path: AppRoutes.otpVerification,
+      name: 'otp-verification',
+      builder: (context, state) => OtpVerificationPage(
+        phoneNumber: (state.extra as String?) ?? '',
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.profileCompletion,
+      name: 'profile-completion',
+      builder: (context, state) => ProfileCompletionPage(
+        phoneNumber: (state.extra as String?) ?? '',
+      ),
+    ),
   ],
 
   // TODO: Implement redirect guard when auth is ready.
@@ -59,3 +65,4 @@ final appRouter = GoRouter(
   //   return null;
   // },
 );
+
