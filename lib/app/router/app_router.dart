@@ -3,17 +3,18 @@ import '../../features/auth/presentation/pages/phone_auth_page.dart';
 import '../../features/auth/presentation/pages/otp_verification_page.dart';
 import '../../features/auth/presentation/pages/profile_completion_page.dart';
 import '../../features/design_preview/presentation/pages/design_preview_page.dart';
+import '../../features/id_verification/data/models/verification_session.dart';
+import '../../features/id_verification/presentation/pages/id_capture_page.dart';
+import '../../features/id_verification/presentation/pages/id_verification_intro_page.dart';
+import '../../features/id_verification/presentation/pages/selfie_capture_page.dart';
+import '../../features/id_verification/presentation/pages/data_review_page.dart';
+import '../../features/id_verification/presentation/pages/verification_processing_page.dart';
+import '../../features/id_verification/presentation/pages/verification_result_page.dart';
 import '../../features/onboarding/presentation/pages/onboarding_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import 'routes.dart';
 
 /// Meshwary declarative router.
-///
-/// Structure is designed to support future auth and identity-verification
-/// guards via [redirect] callbacks — do not add fake guard logic now.
-///
-/// Guards will inspect [SecureStorage] / [PreferencesStorage] to redirect
-/// unauthenticated or unverified users to the appropriate flow.
 final appRouter = GoRouter(
   initialLocation: AppRoutes.splash,
   debugLogDiagnostics: true,
@@ -54,15 +55,66 @@ final appRouter = GoRouter(
         phoneNumber: (state.extra as String?) ?? '',
       ),
     ),
+
+    // ── Identity Verification routes ─────────────────────────────────────────
+    GoRoute(
+      path: AppRoutes.idVerificationIntro,
+      name: 'id-verification-intro',
+      builder: (context, state) => IdVerificationIntroPage(
+        session: state.extra as VerificationSession,
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.idCaptureFront,
+      name: 'id-capture-front',
+      builder: (context, state) => IdCapturePage(
+        session: state.extra as VerificationSession,
+        isBack: false,
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.idCaptureBack,
+      name: 'id-capture-back',
+      builder: (context, state) => IdCapturePage(
+        session: state.extra as VerificationSession,
+        isBack: true,
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.selfieCapture,
+      name: 'selfie-capture',
+      builder: (context, state) => SelfieCapturePage(
+        session: state.extra as VerificationSession,
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.verificationReview,
+      name: 'verification-review',
+      builder: (context, state) => DataReviewPage(
+        session: state.extra as VerificationSession,
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.verificationProcessing,
+      name: 'verification-processing',
+      builder: (context, state) => VerificationProcessingPage(
+        session: state.extra as VerificationSession,
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.verificationResult,
+      name: 'verification-result',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>;
+        return VerificationResultPage(
+          session: extra['session'] as VerificationSession,
+          isSuccess: extra['isSuccess'] as bool,
+        );
+      },
+    ),
   ],
 
   // TODO: Implement redirect guard when auth is ready.
-  // redirect: (context, state) async {
-  //   final hasSession = await getIt<SecureStorage>().hasActiveSession();
-  //   if (!hasSession && !state.matchedLocation.startsWith('/auth')) {
-  //     return AppRoutes.phoneAuth;
-  //   }
-  //   return null;
-  // },
+  // redirect: (context, state) async { ... },
 );
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../app/router/routes.dart';
+import '../../../id_verification/data/models/verification_session.dart';
 
 class ProfileCompletionPage extends StatefulWidget {
   const ProfileCompletionPage({super.key, required this.phoneNumber});
@@ -54,8 +55,11 @@ class _ProfileCompletionPageState extends State<ProfileCompletionPage>
 
   void _continue() {
     if (!_canContinue) return;
-    // TODO: Navigate to home when home page is ready
-    context.go(AppRoutes.onboarding);
+    final session = VerificationSession(
+      fullName: _nameController.text.trim(),
+      phoneNumber: widget.phoneNumber,
+    );
+    context.push(AppRoutes.idVerificationIntro, extra: session);
   }
 
   @override

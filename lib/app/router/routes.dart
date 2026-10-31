@@ -11,8 +11,15 @@ abstract final class AppRoutes {
   static const String otpVerification = '/auth/otp';
   static const String profileCompletion = '/auth/profile';
 
-  // ── Identity Verification (future) ────────────────────────────────────────
-  static const String idVerification = '/verification/id';
+  // ── Identity Verification ─────────────────────────────────────────────────
+  static const String idVerificationIntro = '/verification/intro';
+  static const String idCaptureFront    = '/verification/id-front';
+  static const String idCaptureBack     = '/verification/id-back';
+  static const String selfieCapture     = '/verification/selfie';
+  static const String verificationReview      = '/verification/review';
+  static const String verificationProcessing  = '/verification/processing';
+  static const String verificationResult      = '/verification/result';
+
 
   // ── Main App (future) ──────────────────────────────────────────────────────
   static const String home = '/home';
