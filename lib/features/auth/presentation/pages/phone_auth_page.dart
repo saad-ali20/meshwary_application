@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_colors.dart';
+import '../../../../app/di/injection.dart';
 import '../../../../app/router/routes.dart';
+import '../../../../core/error/exceptions.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../data/repositories/auth_repository.dart';
 
 class PhoneAuthPage extends StatefulWidget {
   const PhoneAuthPage({super.key});
@@ -16,6 +19,7 @@ class _PhoneAuthPageState extends State<PhoneAuthPage>
   final _phoneController = TextEditingController();
   final _phoneFocus = FocusNode();
   bool _agreedToTerms = false;
+  bool _isLoading = false;
 
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
@@ -55,12 +59,45 @@ class _PhoneAuthPageState extends State<PhoneAuthPage>
         phone.startsWith('015');
   }
 
-  bool get _canSubmit => _isValidEgyptianPhone;
+  bool get _canSubmit => _isValidEgyptianPhone && !_isLoading;
 
-  void _sendOtp() {
+  Future<void> _sendOtp() async {
     if (!_canSubmit) return;
-    final phone = '+20${_phoneController.text.trim()}';
-    context.push(AppRoutes.otpVerification, extra: phone);
+    final phone = _phoneController.text.trim();
+
+    setState(() => _isLoading = true);
+    FocusScope.of(context).unfocus();
+
+    try {
+      await getIt<AuthRepository>().requestOtp(phone);
+      if (!mounted) return;
+      context.push(AppRoutes.otpVerification, extra: phone);
+    } catch (e) {
+      if (!mounted) return;
+      final message = e is AppException
+          ? e.message
+          : 'تعذر إرسال كود التحقق. يرجى التأكد من الرقم وإعادة المحاولة.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            style: const TextStyle(
+              fontFamily: 'Cairo',
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -73,129 +110,95 @@ class _PhoneAuthPageState extends State<PhoneAuthPage>
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(horizontal: sh * 0.030),
-            physics: const ClampingScrollPhysics(),
-            child: FadeTransition(
-              opacity: _fadeAnim,
-              child: SlideTransition(
-                position: _slideAnim,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    SizedBox(height: sh * 0.055),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                padding: EdgeInsets.symmetric(horizontal: sh * 0.030),
+                physics: const ClampingScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Center(
+                    child: FadeTransition(
+                      opacity: _fadeAnim,
+                      child: SlideTransition(
+                        position: _slideAnim,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            SizedBox(height: sh * 0.02),
 
-                    // ── Logo ────────────────────────────────────────────────
-                    Image.asset(
-                      'assets/images/meshwary_logo.png',
-                      height: sh * 0.150,
-                    ),
-                    // SizedBox(height: sh * 0.012),
+                            // ── Logo ────────────────────────────────────────────────
+                            Image.asset(
+                              'assets/images/meshwary_logo.png',
+                              height: sh * 0.240,
+                              fit: BoxFit.contain,
+                            ),
+                            SizedBox(height: sh * 0.020),
 
-                    // Text(
-                    //   'مشواري',
-                    //   style: TextStyle(
-                    //     fontFamily: 'Cairo',
-                    //     fontSize: sh * 0.036,
-                    //     fontWeight: FontWeight.w800,
-                    //     color: AppColors.textPrimary,
-                    //     height: 1.1,
-                    //   ),
-                    // ),
-                    // Text(
-                    //   'سكوتر الصعيد',
-                    //   style: TextStyle(
-                    //     fontFamily: 'Cairo',
-                    //     fontSize: sh * 0.018,
-                    //     fontWeight: FontWeight.w600,
-                    //     color: AppColors.primary,
-                    //     letterSpacing: 0.5,
-                    //   ),
-                    // ),
-                    SizedBox(height: sh * 0.025),
+                            // ── Welcome ─────────────────────────────────────────────
+                            Text(
+                              'مرحباً بك في مشواري',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: sh * 0.028,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            SizedBox(height: sh * 0.006),
+                            Text(
+                              'أدخل رقم هاتفك للمتابعة',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: sh * 0.017,
+                                fontWeight: FontWeight.w400,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
 
-                    // ── Welcome ─────────────────────────────────────────────
-                    Text(
-                      'مرحباً بك في مشواري',
-                      style: TextStyle(
-                        fontFamily: 'Cairo',
-                        fontSize: sh * 0.028,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
+                            SizedBox(height: sh * 0.032),
+
+                            // ── Phone field ─────────────────────────────────────────
+                            _PhoneField(
+                              controller: _phoneController,
+                              focusNode: _phoneFocus,
+                            ),
+
+                            SizedBox(height: sh * 0.022),
+
+                            // ── Send OTP button ─────────────────────────────────────
+                            _PrimaryButton(
+                              id: 'btn_send_otp',
+                              label: 'إرسال كود التحقق',
+                              enabled: _canSubmit,
+                              isLoading: _isLoading,
+                              onPressed: _sendOtp,
+                            ),
+
+                            SizedBox(height: sh * 0.018),
+
+                            // ── Terms checkbox ──────────────────────────────────────
+                            _TermsRow(
+                              value: _agreedToTerms,
+                              onChanged: (v) =>
+                                  setState(() => _agreedToTerms = v ?? false),
+                            ),
+
+                            SizedBox(height: sh * 0.028),
+
+                            // ── Or divider ──────────────────────────────────────────
+                            const _OrDivider(),
+
+                            SizedBox(height: sh * 0.02 + bottom),
+                          ],
+                        ),
                       ),
                     ),
-                    SizedBox(height: sh * 0.006),
-                    Text(
-                      'أدخل رقم هاتفك للمتابعة',
-                      style: TextStyle(
-                        fontFamily: 'Cairo',
-                        fontSize: sh * 0.017,
-                        fontWeight: FontWeight.w400,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-
-                    SizedBox(height: sh * 0.032),
-
-                    // ── Phone field ─────────────────────────────────────────
-                    _PhoneField(
-                      controller: _phoneController,
-                      focusNode: _phoneFocus,
-                    ),
-
-                    SizedBox(height: sh * 0.022),
-
-                    // ── Send OTP button ─────────────────────────────────────
-                    _PrimaryButton(
-                      id: 'btn_send_otp',
-                      label: 'إرسال كود التحقق',
-                      enabled: _canSubmit,
-                      onPressed: _sendOtp,
-                    ),
-
-                    SizedBox(height: sh * 0.018),
-
-                    // ── Terms checkbox ──────────────────────────────────────
-                    _TermsRow(
-                      value: _agreedToTerms,
-                      onChanged: (v) =>
-                          setState(() => _agreedToTerms = v ?? false),
-                    ),
-
-                    SizedBox(height: sh * 0.028),
-
-                    // ── Or divider ──────────────────────────────────────────
-                    const _OrDivider(),
-
-                    SizedBox(height: sh * 0.025),
-
-                    // ── Social sign-in ──────────────────────────────────────
-                    // Row(
-                    //   mainAxisAlignment: MainAxisAlignment.center,
-                    //   children: [
-                    //     _SocialButton(
-                    //       id: 'btn_google',
-                    //       label: 'G',
-                    //       labelStyle: TextStyle(
-                    //         fontSize: sh * 0.024,
-                    //         fontWeight: FontWeight.w700,
-                    //         color: AppColors.textPrimary,
-                    //       ),
-                    //       onPressed: () {},
-                    //     ),
-                    //     SizedBox(width: sh * 0.018),
-                    //     _SocialButton(
-                    //       id: 'btn_apple',
-                    //       icon: Icons.apple,
-                    //       onPressed: () {},
-                    //     ),
-                    //   ],
-                    // ),
-                    SizedBox(height: sh * 0.04 + bottom),
-                  ],
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ),
       ),
@@ -297,12 +300,14 @@ class _PrimaryButton extends StatefulWidget {
     required this.label,
     required this.onPressed,
     this.enabled = true,
+    this.isLoading = false,
   });
 
   final String id;
   final String label;
   final VoidCallback onPressed;
   final bool enabled;
+  final bool isLoading;
 
   @override
   State<_PrimaryButton> createState() => _PrimaryButtonState();
@@ -314,7 +319,7 @@ class _PrimaryButtonState extends State<_PrimaryButton> {
   @override
   Widget build(BuildContext context) {
     final sh = MediaQuery.sizeOf(context).height;
-    final active = widget.enabled;
+    final active = widget.enabled && !widget.isLoading;
 
     return GestureDetector(
       onTapDown: active ? (_) => setState(() => _pressed = true) : null,
@@ -349,15 +354,24 @@ class _PrimaryButtonState extends State<_PrimaryButton> {
                   : null,
             ),
             alignment: Alignment.center,
-            child: Text(
-              widget.label,
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: sh * 0.02,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textOnPrimary,
-              ),
-            ),
+            child: widget.isLoading
+                ? SizedBox(
+                    width: sh * 0.03,
+                    height: sh * 0.03,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: AppColors.textOnPrimary,
+                    ),
+                  )
+                : Text(
+                    widget.label,
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: sh * 0.02,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textOnPrimary,
+                    ),
+                  ),
           ),
         ),
       ),
@@ -463,64 +477,4 @@ class _OrDivider extends StatelessWidget {
   }
 }
 
-// ── Social Button ─────────────────────────────────────────────────────────────
 
-class _SocialButton extends StatefulWidget {
-  const _SocialButton({
-    required this.id,
-    required this.onPressed,
-    this.icon,
-    this.label,
-    this.labelStyle,
-  });
-
-  final String id;
-  final VoidCallback onPressed;
-  final IconData? icon;
-  final String? label;
-  final TextStyle? labelStyle;
-
-  @override
-  State<_SocialButton> createState() => _SocialButtonState();
-}
-
-class _SocialButtonState extends State<_SocialButton> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final sh = MediaQuery.sizeOf(context).height;
-    final size = sh * 0.072;
-
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onPressed();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.94 : 1.0,
-        duration: const Duration(milliseconds: 100),
-        child: Container(
-          key: ValueKey(widget.id),
-          width: size * 1.4,
-          height: size,
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border, width: 1.2),
-          ),
-          alignment: Alignment.center,
-          child: widget.icon != null
-              ? Icon(
-                  widget.icon,
-                  color: AppColors.textPrimary,
-                  size: sh * 0.028,
-                )
-              : Text(widget.label ?? '', style: widget.labelStyle),
-        ),
-      ),
-    );
-  }
-}

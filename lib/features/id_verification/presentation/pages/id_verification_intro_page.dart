@@ -46,7 +46,6 @@ class _IdVerificationIntroPageState extends State<IdVerificationIntroPage>
   @override
   Widget build(BuildContext context) {
     final sh = MediaQuery.sizeOf(context).height;
-    final top = MediaQuery.paddingOf(context).top;
     final bottom = MediaQuery.paddingOf(context).bottom;
 
     return Scaffold(
@@ -132,9 +131,9 @@ class _IdVerificationIntroPageState extends State<IdVerificationIntroPage>
 
                   // ── Skip link ──────────────────────────────────────────────
                   GestureDetector(
-                    onTap: () => context.go(AppRoutes.onboarding),
+                    onTap: () => context.go(AppRoutes.home),
                     child: Text(
-                      'بمكنك تصفح التطبيق الآن',
+                      'يمكنك تصفح التطبيق الآن',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: 'Cairo',
@@ -277,13 +276,11 @@ class _PrimaryButton extends StatefulWidget {
     required this.id,
     required this.label,
     required this.onPressed,
-    this.enabled = true,
   });
 
   final String id;
   final String label;
   final VoidCallback onPressed;
-  final bool enabled;
 
   @override
   State<_PrimaryButton> createState() => _PrimaryButtonState();
@@ -296,46 +293,38 @@ class _PrimaryButtonState extends State<_PrimaryButton> {
   Widget build(BuildContext context) {
     final sh = MediaQuery.sizeOf(context).height;
     return GestureDetector(
-      onTapDown: widget.enabled ? (_) => setState(() => _pressed = true) : null,
-      onTapUp: widget.enabled
-          ? (_) {
-              setState(() => _pressed = false);
-              widget.onPressed();
-            }
-          : null,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onPressed();
+      },
       onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedScale(
         scale: _pressed ? 0.97 : 1.0,
         duration: const Duration(milliseconds: 100),
-        child: AnimatedOpacity(
-          opacity: widget.enabled ? 1.0 : 0.45,
-          duration: const Duration(milliseconds: 200),
-          child: Container(
-            key: ValueKey(widget.id),
-            width: double.infinity,
-            height: sh * 0.068,
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: widget.enabled
-                  ? [
-                      BoxShadow(
-                        color: AppColors.primary.withAlpha(80),
-                        blurRadius: 20,
-                        offset: const Offset(0, 6),
-                      ),
-                    ]
-                  : null,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              widget.label,
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: sh * 0.02,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textOnPrimary,
+        child: Container(
+          key: ValueKey(widget.id),
+          width: double.infinity,
+          height: sh * 0.068,
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withAlpha(80),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
               ),
+            ],
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            widget.label,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: sh * 0.02,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textOnPrimary,
             ),
           ),
         ),

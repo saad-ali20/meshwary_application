@@ -21,7 +21,7 @@ abstract final class AppConfig {
   /// TODO: Replace with actual base URL per environment before release.
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://api.dev.meshwary.io/v1', // placeholder
+    defaultValue: 'https://meshwary-api.runasp.net',
   );
 
   // ── Timeouts ───────────────────────────────────────────────────────────────

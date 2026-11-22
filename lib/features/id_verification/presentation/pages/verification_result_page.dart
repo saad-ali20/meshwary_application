@@ -111,7 +111,7 @@ class _VerificationResultPageState extends State<VerificationResultPage>
                     id: 'btn_go_to_map',
                     label: 'الانتقال إلى الخريطة',
                     color: AppColors.primary,
-                    onPressed: () => context.go(AppRoutes.onboarding),
+                    onPressed: () => context.go(AppRoutes.home),
                   ),
                 ] else ...[
                   _PrimaryButton(

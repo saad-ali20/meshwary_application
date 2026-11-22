@@ -1,0 +1,9 @@
+## Local configuration for Meshwary Android build.
+## DO NOT commit local.properties to version control.
+## Copy this file to android/local.properties (or add this property to your existing local.properties).
+
+## Google Maps Android SDK API Key
+## 1. Enable "Maps SDK for Android" in Google Cloud Console.
+## 2. Restrict the key by Package name (com.example.meshwary_app)
+##    and your debug/release signing SHA-1 fingerprint.
+maps.apiKey=YOUR_ANDROID_GOOGLE_MAPS_KEY

@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'app/app.dart';
 import 'app/di/injection.dart';
 
-Future<void> main() async {
+void main() {
+  // 1. Ensure Flutter engine bindings are initialized
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Prevent google_fonts from fetching fonts over the network.
-  // Fonts must be bundled locally in assets/fonts/ or already cached.
-  GoogleFonts.config.allowRuntimeFetching = false;
+  // 2. Launch dependencies initialization in background
+  ensureDependenciesInitialized();
 
-  // Register all dependencies before the app starts.
-  await configureDependencies();
-
+  // 3. Launch Flutter app immediately so frame 1 renders right away.
+  // This removes the Android native launch screen without any delay.
   runApp(const MeshwaryApp());
 }

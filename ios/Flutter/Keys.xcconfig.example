@@ -1,0 +1,8 @@
+// Local configuration for Meshwary iOS build.
+// DO NOT commit Keys.xcconfig to version control.
+// Copy this file to ios/Flutter/Keys.xcconfig and supply your key.
+
+// Google Maps iOS SDK API Key
+// 1. Enable "Maps SDK for iOS" in Google Cloud Console.
+// 2. Restrict the key by Bundle Identifier: com.example.meshwaryApp
+MAPS_API_KEY=YOUR_IOS_GOOGLE_MAPS_KEY

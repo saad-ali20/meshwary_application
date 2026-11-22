@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#091112</color>
+    <!-- Meshwary brand background (deepest dark) – used by NormalTheme
+         to prevent any white/color flash after the launch screen -->
+    <color name="splash_bg">#071214</color>
+</resources>
+

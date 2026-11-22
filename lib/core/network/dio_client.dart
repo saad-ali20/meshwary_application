@@ -7,6 +7,7 @@ import '../error/exceptions.dart' as app_ex show
     ServerException,
     UnauthorizedException;
 import 'interceptors/auth_interceptor.dart';
+import 'interceptors/compound_interceptor.dart';
 import 'interceptors/logging_interceptor.dart';
 
 /// Configured Dio HTTP client for Meshwary.
@@ -34,6 +35,7 @@ class DioClient {
 
     _dio.interceptors.addAll([
       authInterceptor ?? AuthInterceptor(),
+      CompoundInterceptor(),
       if (AppConfig.enableNetworkLogs && !AppConfig.isProduction)
         LoggingInterceptor(),
     ]);
@@ -148,10 +150,24 @@ class DioClient {
   String _extractErrorMessage(Response<dynamic>? response) {
     if (response?.data is Map) {
       final data = response!.data as Map<String, dynamic>;
+      if (data['errors'] is Map) {
+        final errors = data['errors'] as Map;
+        final errorMessages = <String>[];
+        for (final entry in errors.entries) {
+          if (entry.value is List) {
+            errorMessages.addAll((entry.value as List).map((e) => e.toString()));
+          } else if (entry.value != null) {
+            errorMessages.add(entry.value.toString());
+          }
+        }
+        if (errorMessages.isNotEmpty) {
+          return errorMessages.join(' • ');
+        }
+      }
       return (data['message'] as String?) ??
           (data['error'] as String?) ??
-          'Server error ${response.statusCode}.';
+          'حدث خطأ في الخادم (${response.statusCode}).';
     }
-    return 'Server error ${response?.statusCode ?? 'unknown'}.';
+    return 'حدث خطأ في الاتصال بالخادم (${response?.statusCode ?? 'unknown'}).';
   }
 }

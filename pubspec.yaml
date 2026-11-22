@@ -38,7 +38,20 @@ dependencies:
   # Localization & typography
   intl: ^0.20.2
   google_fonts: ^8.2.1
+  # Location
+  geolocator: ^11.0.0
+
+  # Image picker (ID / Selfie verification)
   image_picker: ^1.1.2
+
+  # Real Map
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  google_maps_flutter: ^2.18.1
+  url_launcher: ^6.3.3
+
+  # QR / Barcode scanning
+  mobile_scanner: ^7.0.0
 
 dev_dependencies:
   flutter_test:

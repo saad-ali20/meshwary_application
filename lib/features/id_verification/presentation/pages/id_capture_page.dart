@@ -84,7 +84,6 @@ class _IdCapturePageState extends State<IdCapturePage> {
   @override
   Widget build(BuildContext context) {
     final sh = MediaQuery.sizeOf(context).height;
-    final sw = MediaQuery.sizeOf(context).width;
     final bottom = MediaQuery.paddingOf(context).bottom;
     final hasImage = _imagePath != null;
 

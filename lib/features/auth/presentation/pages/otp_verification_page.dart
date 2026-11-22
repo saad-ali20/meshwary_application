@@ -2,8 +2,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_colors.dart';
+import '../../../../app/di/injection.dart';
 import '../../../../app/router/routes.dart';
+import '../../../../core/error/exceptions.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../data/models/profile_completion_args.dart';
+import '../../data/repositories/auth_repository.dart';
 
 class OtpVerificationPage extends StatefulWidget {
   const OtpVerificationPage({super.key, required this.phoneNumber});
@@ -35,6 +39,8 @@ class _OtpVerificationPageState extends State<OtpVerificationPage>
   Timer? _timer;
   int _secondsLeft = _timerSeconds;
   bool _canResend = false;
+  bool _isLoading = false;
+  bool _isResending = false;
 
   @override
   void initState() {
@@ -110,18 +116,111 @@ class _OtpVerificationPageState extends State<OtpVerificationPage>
     setState(() {});
   }
 
-  void _verifyOtp() {
-    if (!_otpComplete) return;
-    context.push(AppRoutes.profileCompletion, extra: widget.phoneNumber);
+  Future<void> _verifyOtp() async {
+    if (!_otpComplete || _isLoading) return;
+
+    setState(() => _isLoading = true);
+    FocusScope.of(context).unfocus();
+
+    try {
+      final verificationToken = await getIt<AuthRepository>().verifyOtp(
+        widget.phoneNumber,
+        _otpValue,
+      );
+
+      if (!mounted) return;
+      context.push(
+        AppRoutes.profileCompletion,
+        extra: ProfileCompletionArgs(
+          phoneNumber: widget.phoneNumber,
+          verificationToken: verificationToken,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final message = e is AppException
+          ? e.message
+          : 'رمز التحقق غير صحيح أو انتهت صلاحيته.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            style: const TextStyle(
+              fontFamily: 'Cairo',
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
-  void _resendCode() {
-    if (!_canResend) return;
-    for (final c in _controllers) {
-      c.clear();
+  Future<void> _resendCode() async {
+    if (!_canResend || _isResending) return;
+
+    setState(() => _isResending = true);
+
+    try {
+      await getIt<AuthRepository>().requestOtp(widget.phoneNumber);
+
+      if (!mounted) return;
+      for (final c in _controllers) {
+        c.clear();
+      }
+      _focusNodes[0].requestFocus();
+      _startTimer();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'تم إرسال كود تحقق جديد إلى هاتفك.',
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final message = e is AppException
+          ? e.message
+          : 'تعذر إعادة إرسال الكود. يرجى المحاولة لاحقاً.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            style: const TextStyle(
+              fontFamily: 'Cairo',
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isResending = false);
+      }
     }
-    _focusNodes[0].requestFocus();
-    _startTimer();
   }
 
   @override
@@ -153,111 +252,122 @@ class _OtpVerificationPageState extends State<OtpVerificationPage>
                   ),
 
                   Expanded(
-                    child: SingleChildScrollView(
-                      padding: EdgeInsets.symmetric(horizontal: sh * 0.032),
-                      physics: const ClampingScrollPhysics(),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          SizedBox(height: sh * 0.04),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return SingleChildScrollView(
+                          padding: EdgeInsets.symmetric(horizontal: sh * 0.032),
+                          physics: const ClampingScrollPhysics(),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  SizedBox(height: sh * 0.02),
 
-                          // ── Illustration ─────────────────────────────────
-                          _OtpIllustration(size: sh * 0.18),
+                                  // ── Illustration ─────────────────────────────────
+                                  _OtpIllustration(size: sh * 0.16),
 
-                          SizedBox(height: sh * 0.038),
+                                  SizedBox(height: sh * 0.030),
 
-                          // ── Title ────────────────────────────────────────
-                          Text(
-                            'أدخل كود التحقق',
-                            style: TextStyle(
-                              fontFamily: 'Cairo',
-                              fontSize: sh * 0.030,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-
-                          SizedBox(height: sh * 0.01),
-
-                          // ── Subtitle ─────────────────────────────────────
-                          Text(
-                            'تم إرسال كود مكون من 6 أرقام إلى',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontFamily: 'Cairo',
-                              fontSize: sh * 0.017,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                          SizedBox(height: sh * 0.004),
-                          Text(
-                            widget.phoneNumber,
-                            style: TextStyle(
-                              fontFamily: 'Cairo',
-                              fontSize: sh * 0.02,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                              letterSpacing: 1.4,
-                            ),
-                          ),
-
-                          SizedBox(height: sh * 0.04),
-
-                          // ── OTP boxes ────────────────────────────────────
-                          _OtpBoxes(
-                            controllers: _controllers,
-                            focusNodes: _focusNodes,
-                            onChanged: _onOtpChanged,
-                          ),
-
-                          SizedBox(height: sh * 0.032),
-
-                          // ── Timer ────────────────────────────────────────
-                          AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 300),
-                            child: _canResend
-                                ? const SizedBox.shrink()
-                                : Text(
-                                    'سيتم إعادة إرسال الكود خلال $_timerText',
-                                    key: const ValueKey('timer'),
+                                  // ── Title ────────────────────────────────────────
+                                  Text(
+                                    'أدخل كود التحقق',
                                     style: TextStyle(
                                       fontFamily: 'Cairo',
-                                      fontSize: sh * 0.016,
+                                      fontSize: sh * 0.030,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+
+                                  SizedBox(height: sh * 0.008),
+
+                                  // ── Subtitle ─────────────────────────────────────
+                                  Text(
+                                    'تم إرسال كود مكون من 6 أرقام إلى',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: sh * 0.017,
                                       color: AppColors.textSecondary,
                                     ),
                                   ),
+                                  SizedBox(height: sh * 0.004),
+                                  Text(
+                                    widget.phoneNumber,
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: sh * 0.02,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textPrimary,
+                                      letterSpacing: 1.4,
+                                    ),
+                                  ),
+
+                                  SizedBox(height: sh * 0.035),
+
+                                  // ── OTP boxes ────────────────────────────────────
+                                  _OtpBoxes(
+                                    controllers: _controllers,
+                                    focusNodes: _focusNodes,
+                                    onChanged: _onOtpChanged,
+                                  ),
+
+                                  SizedBox(height: sh * 0.028),
+
+                                  // ── Timer ────────────────────────────────────────
+                                  AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 300),
+                                    child: _canResend
+                                        ? const SizedBox.shrink()
+                                        : Text(
+                                            'سيتم إعادة إرسال الكود خلال $_timerText',
+                                            key: const ValueKey('timer'),
+                                            style: TextStyle(
+                                              fontFamily: 'Cairo',
+                                              fontSize: sh * 0.016,
+                                              color: AppColors.textSecondary,
+                                            ),
+                                          ),
+                                  ),
+
+                                  SizedBox(height: sh * 0.016),
+
+                                  // ── Resend & change number ───────────────────────
+                                  _TextLinkButton(
+                                    id: 'btn_resend',
+                                    label: 'إعادة إرسال الكود',
+                                    enabled: _canResend,
+                                    onTap: _resendCode,
+                                  ),
+                                  SizedBox(height: sh * 0.008),
+                                  _TextLinkButton(
+                                    id: 'btn_change_phone',
+                                    label: 'تغيير رقم الهاتف',
+                                    enabled: true,
+                                    onTap: () => context.pop(),
+                                  ),
+
+                                  SizedBox(height: sh * 0.032),
+
+                                  // ── Verify button ────────────────────────────────
+                                  _PrimaryButton(
+                                    id: 'btn_verify_otp',
+                                    label: 'تحقق',
+                                    enabled: _otpComplete && !_isLoading,
+                                    isLoading: _isLoading,
+                                    onPressed: _verifyOtp,
+                                  ),
+
+                                  SizedBox(height: sh * 0.02 + bottom),
+                                ],
+                              ),
+                            ),
                           ),
-
-                          SizedBox(height: sh * 0.018),
-
-                          // ── Resend & change number ───────────────────────
-                          _TextLinkButton(
-                            id: 'btn_resend',
-                            label: 'إعادة إرسال الكود',
-                            enabled: _canResend,
-                            onTap: _resendCode,
-                          ),
-                          SizedBox(height: sh * 0.01),
-                          _TextLinkButton(
-                            id: 'btn_change_phone',
-                            label: 'تغيير رقم الهاتف',
-                            enabled: true,
-                            onTap: () => context.pop(),
-                          ),
-
-                          SizedBox(height: sh * 0.038),
-
-                          // ── Verify button ────────────────────────────────
-                          _PrimaryButton(
-                            id: 'btn_verify_otp',
-                            label: 'تحقق',
-                            enabled: _otpComplete,
-                            onPressed: _verifyOtp,
-                          ),
-
-                          SizedBox(height: sh * 0.04 + bottom),
-                        ],
-                      ),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -394,7 +504,7 @@ class _OtpBoxes extends StatelessWidget {
   }
 }
 
-class _OtpBox extends StatelessWidget {
+class _OtpBox extends StatefulWidget {
   const _OtpBox({
     required this.controller,
     required this.focusNode,
@@ -410,46 +520,87 @@ class _OtpBox extends StatelessWidget {
   final VoidCallback onBackspace;
 
   @override
+  State<_OtpBox> createState() => _OtpBoxState();
+}
+
+class _OtpBoxState extends State<_OtpBox> {
+  @override
+  void initState() {
+    super.initState();
+    widget.focusNode.addListener(_onFocusChange);
+  }
+
+  @override
+  void dispose() {
+    widget.focusNode.removeListener(_onFocusChange);
+    super.dispose();
+  }
+
+  void _onFocusChange() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isFilled = controller.text.isNotEmpty;
+    final isFilled = widget.controller.text.isNotEmpty;
+    final isFocused = widget.focusNode.hasFocus;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
-      width: size,
-      height: size,
+      width: widget.size,
+      height: widget.size,
       decoration: BoxDecoration(
-        color: isFilled ? AppColors.primary.withAlpha(20) : AppColors.surface,
+        color: isFilled
+            ? AppColors.primary.withAlpha(25)
+            : (isFocused ? const Color(0xFF132328) : AppColors.surface),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isFilled ? AppColors.primary : AppColors.border,
-          width: isFilled ? 1.5 : 1.2,
+          color: isFocused
+              ? AppColors.primary
+              : (isFilled ? AppColors.primary.withAlpha(160) : AppColors.border),
+          width: isFocused ? 2.0 : (isFilled ? 1.5 : 1.2),
         ),
+        boxShadow: isFocused
+            ? [
+                BoxShadow(
+                  color: AppColors.primary.withAlpha(50),
+                  blurRadius: 10,
+                  spreadRadius: 1,
+                ),
+              ]
+            : null,
       ),
+      alignment: Alignment.center,
       child: TextField(
-        controller: controller,
-        focusNode: focusNode,
+        controller: widget.controller,
+        focusNode: widget.focusNode,
         keyboardType: TextInputType.number,
         textAlign: TextAlign.center,
+        textAlignVertical: TextAlignVertical.center,
         maxLength: 1,
+        cursorColor: AppColors.primary,
+        cursorWidth: 2,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         style: TextStyle(
           fontFamily: 'Cairo',
-          fontSize: size * 0.4,
-          fontWeight: FontWeight.w700,
-          color: AppColors.primary,
+          fontSize: widget.size * 0.44,
+          fontWeight: FontWeight.w800,
+          color: Colors.white,
         ),
         decoration: const InputDecoration(
           counterText: '',
           border: InputBorder.none,
+          isDense: true,
+          contentPadding: EdgeInsets.zero,
         ),
         onChanged: (v) {
           if (v.length > 1) {
-            controller.text = v[v.length - 1];
-            controller.selection = TextSelection.collapsed(
-              offset: controller.text.length,
+            widget.controller.text = v[v.length - 1];
+            widget.controller.selection = TextSelection.collapsed(
+              offset: widget.controller.text.length,
             );
           }
-          onChanged(v.isEmpty ? '' : controller.text);
+          widget.onChanged(v.isEmpty ? '' : widget.controller.text);
         },
       ),
     );
@@ -533,12 +684,14 @@ class _PrimaryButton extends StatefulWidget {
     required this.label,
     required this.onPressed,
     this.enabled = true,
+    this.isLoading = false,
   });
 
   final String id;
   final String label;
   final VoidCallback onPressed;
   final bool enabled;
+  final bool isLoading;
 
   @override
   State<_PrimaryButton> createState() => _PrimaryButtonState();
@@ -550,10 +703,11 @@ class _PrimaryButtonState extends State<_PrimaryButton> {
   @override
   Widget build(BuildContext context) {
     final sh = MediaQuery.sizeOf(context).height;
+    final active = widget.enabled && !widget.isLoading;
 
     return GestureDetector(
-      onTapDown: widget.enabled ? (_) => setState(() => _pressed = true) : null,
-      onTapUp: widget.enabled
+      onTapDown: active ? (_) => setState(() => _pressed = true) : null,
+      onTapUp: active
           ? (_) {
               setState(() => _pressed = false);
               widget.onPressed();
@@ -564,7 +718,7 @@ class _PrimaryButtonState extends State<_PrimaryButton> {
         scale: _pressed ? 0.97 : 1.0,
         duration: const Duration(milliseconds: 100),
         child: AnimatedOpacity(
-          opacity: widget.enabled ? 1.0 : 0.45,
+          opacity: active ? 1.0 : 0.45,
           duration: const Duration(milliseconds: 200),
           child: Container(
             key: ValueKey(widget.id),
@@ -573,7 +727,7 @@ class _PrimaryButtonState extends State<_PrimaryButton> {
             decoration: BoxDecoration(
               color: AppColors.primary,
               borderRadius: BorderRadius.circular(14),
-              boxShadow: widget.enabled
+              boxShadow: active
                   ? [
                       BoxShadow(
                         color: AppColors.primary.withAlpha(80),
@@ -584,15 +738,24 @@ class _PrimaryButtonState extends State<_PrimaryButton> {
                   : null,
             ),
             alignment: Alignment.center,
-            child: Text(
-              widget.label,
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: sh * 0.02,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textOnPrimary,
-              ),
-            ),
+            child: widget.isLoading
+                ? SizedBox(
+                    width: sh * 0.03,
+                    height: sh * 0.03,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: AppColors.textOnPrimary,
+                    ),
+                  )
+                : Text(
+                    widget.label,
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: sh * 0.02,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textOnPrimary,
+                    ),
+                  ),
           ),
         ),
       ),

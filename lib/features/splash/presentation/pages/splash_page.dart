@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../app/di/injection.dart';
 import '../../../../app/router/routes.dart';
+import '../../../../core/storage/preferences_storage.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../auth/data/repositories/auth_repository.dart';
 
 /// Meshwary splash screen.
 ///
@@ -24,7 +26,6 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
   // ── Progress bar animation (0 → 1 over ~3 seconds) ────────────────────
   late final AnimationController _progressController;
   late final Animation<double> _progressAnimation;
-  double _progressValue = 0.0;
 
   @override
   void initState() {
@@ -51,16 +52,49 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
       curve: Curves.easeInOut,
     );
     _progressAnimation.addListener(_onProgressTick);
-    _progressController.forward().then((_) {
-      // Navigate to onboarding when loading is complete
-      if (mounted) context.go(AppRoutes.onboarding);
+    _progressController.forward().then((_) async {
+      if (!mounted) return;
+
+      try {
+        // Ensure background dependency injection is completed
+        await ensureDependenciesInitialized().timeout(
+          const Duration(seconds: 4),
+          onTimeout: () => debugPrint('DI initialization timeout fallback...'),
+        );
+
+        if (!mounted) return;
+
+        final authRepo = getIt<AuthRepository>();
+        final prefsStorage = getIt<PreferencesStorage>();
+
+        // 1. If access token is valid and not expired -> direct to Home!
+        final isTokenValid = await authRepo.isTokenValid();
+        if (isTokenValid) {
+          await authRepo.loadCachedUser();
+          if (mounted) context.go(AppRoutes.home);
+          return;
+        }
+
+        // 2. If token expired, or user already has an account / did onboarding
+        // -> go directly to Login (phone + password) instead of requesting OTP again!
+        if (authRepo.hasSavedAccount || prefsStorage.isOnboardingComplete) {
+          if (mounted) context.go(AppRoutes.login);
+        } else {
+          // First-time new user -> Onboarding
+          if (mounted) context.go(AppRoutes.onboarding);
+        }
+      } catch (e, stack) {
+        debugPrint('Splash navigation error: $e\n$stack');
+        // Safe fallback so the user is never stuck on splash
+        if (mounted) {
+          context.go(AppRoutes.onboarding);
+        }
+      }
     });
   }
 
   void _onProgressTick() {
-    setState(() {
-      _progressValue = _progressAnimation.value;
-    });
+    setState(() {});
   }
 
   @override
@@ -75,7 +109,6 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
-    final percent = (_progressValue * 100).round();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -153,7 +186,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                   // ── Tagline ──────────────────────────────────────────────
                   // Text(
                   //   'سكوتر الصعيد',
-                  //   style: TextStyle(fontFamily: 'Cairo', 
+                  //   style: TextStyle(fontFamily: 'Cairo',
                   //     fontSize: 18,
                   //     fontWeight: FontWeight.w600,
                   //     color: AppColors.textPrimary.withAlpha(200),
@@ -207,7 +240,8 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                             const SizedBox(height: 14),
                             Text(
                               '$percent%',
-                              style: TextStyle(fontFamily: 'Cairo', 
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.textPrimary.withAlpha(180),
@@ -223,7 +257,8 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                   // ── Loading text ─────────────────────────────────────────
                   Text(
                     'جاري التحميل...',
-                    style: TextStyle(fontFamily: 'Cairo', 
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                       color: AppColors.textSecondary,

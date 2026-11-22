@@ -1,6 +1,6 @@
 {
-    "name": "meshwary_app",
-    "short_name": "meshwary_app",
+    "name": "مشواري",
+    "short_name": "مشواري",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

@@ -71,7 +71,7 @@ class _VerificationProcessingPageState
               // ── Hourglass animation ───────────────────────────────────────
               AnimatedBuilder(
                 animation: _rotateCtrl,
-                builder: (_, __) {
+                builder: (_, child) {
                   return Transform.rotate(
                     angle: _rotateCtrl.value * 2 * math.pi,
                     child: Container(

@@ -5,8 +5,9 @@ abstract final class AppRoutes {
   static const String splash = '/';
   static const String designPreview = '/design-preview';
 
-  // ── Auth (future) ──────────────────────────────────────────────────────────
+  // ── Auth ───────────────────────────────────────────────────────────────────
   static const String onboarding = '/onboarding';
+  static const String login = '/auth/login';
   static const String phoneAuth = '/auth/phone';
   static const String otpVerification = '/auth/otp';
   static const String profileCompletion = '/auth/profile';
@@ -21,12 +22,32 @@ abstract final class AppRoutes {
   static const String verificationResult      = '/verification/result';
 
 
-  // ── Main App (future) ──────────────────────────────────────────────────────
-  static const String home = '/home';
-  static const String rideActive = '/ride/active';
-  static const String rideReceipt = '/ride/receipt';
-  static const String wallet = '/wallet';
-  static const String profile = '/profile';
-  static const String settings = '/settings';
-  static const String support = '/support';
+  // ── Main App ───────────────────────────────────────────────────────────────
+  static const String home               = '/home';
+  static const String myRides            = '/rides';
+  static const String wallet             = '/wallet';
+  static const String notifications      = '/notifications';
+  static const String profile            = '/profile';
+
+  // ── Profile Sub-routes ─────────────────────────────────────────────────────
+  static const String personalInfo       = '/profile/personal-info';
+  static const String paymentMethods     = '/profile/payment-methods';
+  static const String inviteFriends      = '/profile/invite-friends';
+  static const String settings           = '/profile/settings';
+  static const String aboutApp           = '/profile/about';
+  static const String terms              = '/profile/terms';
+  static const String support            = '/profile/support';
+
+  // ── Scooter & Ride Cycle ───────────────────────────────────────────────────
+  static const String scooterDetails     = '/scooter/details';
+  static const String navigateScooter    = '/scooter/navigate';
+  static const String bookScooter        = '/scooter/book';
+  static const String activeReservation  = '/scooter/active-reservation';
+  static const String paymentMethod      = '/payment/select';
+  static const String qrScan             = '/ride/qr';
+  static const String unlockVerification = '/ride/unlock-verification';
+  static const String unlockingProgress  = '/ride/unlocking';
+  static const String rideStarted        = '/ride/started';
+  static const String rideActive         = '/ride/active';
+  static const String rideReceipt        = '/ride/receipt';
 }

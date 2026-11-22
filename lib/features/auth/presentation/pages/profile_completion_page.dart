@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_colors.dart';
+import '../../../../app/di/injection.dart';
 import '../../../../app/router/routes.dart';
-import '../../../id_verification/data/models/verification_session.dart';
+import '../../../../core/error/exceptions.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../data/repositories/auth_repository.dart';
 
 class ProfileCompletionPage extends StatefulWidget {
-  const ProfileCompletionPage({super.key, required this.phoneNumber});
+  const ProfileCompletionPage({
+    super.key,
+    required this.phoneNumber,
+    this.verificationToken = '',
+  });
 
   final String phoneNumber;
+  final String verificationToken;
 
   @override
   State<ProfileCompletionPage> createState() => _ProfileCompletionPageState();
@@ -16,10 +23,16 @@ class ProfileCompletionPage extends StatefulWidget {
 class _ProfileCompletionPageState extends State<ProfileCompletionPage>
     with SingleTickerProviderStateMixin {
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
   final _nameFocus = FocusNode();
-  final _emailFocus = FocusNode();
+  final _passwordFocus = FocusNode();
+  final _confirmPasswordFocus = FocusNode();
+
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+  bool _isLoading = false;
 
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
@@ -30,7 +43,7 @@ class _ProfileCompletionPageState extends State<ProfileCompletionPage>
     super.initState();
     _fadeCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 550),
     )..forward();
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _slideAnim = Tween<Offset>(
@@ -39,27 +52,135 @@ class _ProfileCompletionPageState extends State<ProfileCompletionPage>
     ).animate(CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOutCubic));
 
     _nameController.addListener(() => setState(() {}));
+    _passwordController.addListener(() => setState(() {}));
+    _confirmPasswordController.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     _nameFocus.dispose();
-    _emailFocus.dispose();
+    _passwordFocus.dispose();
+    _confirmPasswordFocus.dispose();
     _fadeCtrl.dispose();
     super.dispose();
   }
 
-  bool get _canContinue => _nameController.text.trim().isNotEmpty;
+  bool get _isNameValid => _nameController.text.trim().length >= 2;
+  bool get _isPasswordValid => _passwordController.text.length >= 6;
+  bool get _doPasswordsMatch =>
+      _passwordController.text.isNotEmpty &&
+      _passwordController.text == _confirmPasswordController.text;
 
-  void _continue() {
-    if (!_canContinue) return;
-    final session = VerificationSession(
-      fullName: _nameController.text.trim(),
-      phoneNumber: widget.phoneNumber,
+  bool get _canSubmit =>
+      _isNameValid &&
+      _isPasswordValid &&
+      _confirmPasswordController.text.isNotEmpty &&
+      !_isLoading;
+
+  Future<void> _submitRegistration() async {
+    if (!_canSubmit) return;
+
+    final fullName = _nameController.text.trim();
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+
+    if (password != confirmPassword) {
+      _showErrorSnackBar('كلمتا المرور غير متطابقتين، يرجى التأكد وإعادة المحاولة.');
+      return;
+    }
+
+    if (widget.verificationToken.isEmpty) {
+      _showErrorSnackBar('رمز التحقق مفقود، يرجى العودة وطلب كود تحقق جديد.');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    FocusScope.of(context).unfocus();
+
+    try {
+      await getIt<AuthRepository>().register(
+        verificationToken: widget.verificationToken,
+        fullName: fullName,
+        password: password,
+      );
+
+      if (!mounted) return;
+
+      _showSuccessSnackBar('تم إنشاء الحساب بنجاح! مرحباً بك يا $fullName');
+
+      // Navigate directly to Home
+      context.go(AppRoutes.home);
+    } catch (e) {
+      if (!mounted) return;
+      final message = e is AppException
+          ? e.message
+          : 'تعذر إنشاء الحساب. يرجى التأكد من البيانات والمحاولة مجدداً.';
+      _showErrorSnackBar(message);
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline_rounded, color: Colors.white, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 4),
+      ),
     );
-    context.push(AppRoutes.idVerificationIntro, extra: session);
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_outline_rounded,
+                color: AppColors.textOnPrimary, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textOnPrimary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   @override
@@ -78,103 +199,234 @@ class _ProfileCompletionPageState extends State<ProfileCompletionPage>
               position: _slideAnim,
               child: Column(
                 children: [
-                  // ── Back button ────────────────────────────────────────────
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        top: sh * 0.01,
-                        right: sh * 0.018,
-                      ),
-                      child: _BackButton(onTap: () => context.pop()),
+                  // ── Top Bar ──────────────────────────────────────────────
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: sh * 0.024,
+                      vertical: sh * 0.012,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _BackButton(onTap: () => context.pop()),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: sh * 0.016,
+                            vertical: sh * 0.007,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withAlpha(25),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: AppColors.primary.withAlpha(80),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 7,
+                                height: 7,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'الخطوة الأخيرة',
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: sh * 0.014,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
+                  // ── Scrollable Body ──────────────────────────────────────
                   Expanded(
                     child: SingleChildScrollView(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: sh * 0.032),
+                      padding: EdgeInsets.symmetric(horizontal: sh * 0.032),
                       physics: const ClampingScrollPhysics(),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          SizedBox(height: sh * 0.03),
+                          SizedBox(height: sh * 0.015),
 
-                          // ── Avatar ────────────────────────────────────────
-                          _AvatarPicker(size: sh * 0.13),
+                          // ── Header Icon Badge ────────────────────────────
+                          Container(
+                            width: sh * 0.11,
+                            height: sh * 0.11,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.surface,
+                              border: Border.all(
+                                color: AppColors.primary.withAlpha(100),
+                                width: 2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primary.withAlpha(40),
+                                  blurRadius: 24,
+                                  spreadRadius: 2,
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.person_add_alt_1_rounded,
+                              color: AppColors.primary,
+                              size: sh * 0.052,
+                            ),
+                          ),
 
-                          SizedBox(height: sh * 0.03),
+                          SizedBox(height: sh * 0.024),
 
-                          // ── Title ─────────────────────────────────────────
+                          // ── Title & Subtitle ─────────────────────────────
                           Text(
-                            'أكمل ملفك الشخصي',
+                            'إكمال بيانات الحساب',
                             style: TextStyle(
                               fontFamily: 'Cairo',
-                              fontSize: sh * 0.030,
+                              fontSize: sh * 0.028,
                               fontWeight: FontWeight.w800,
                               color: AppColors.textPrimary,
                             ),
                           ),
                           SizedBox(height: sh * 0.006),
                           Text(
-                            'ساعدنا نتعرفك بشكل أفضل',
+                            'أدخل اسمك الكامل وكلمة المرور لتأمين حسابك',
+                            textAlign: TextAlign.center,
                             style: TextStyle(
                               fontFamily: 'Cairo',
-                              fontSize: sh * 0.017,
+                              fontSize: sh * 0.016,
                               color: AppColors.textSecondary,
                             ),
                           ),
 
-                          SizedBox(height: sh * 0.04),
+                          SizedBox(height: sh * 0.025),
 
-                          // ── Name field ────────────────────────────────────
-                          _LabeledField(
-                            label: 'الاسم',
-                            hint: 'أدخل اسمك الكامل',
+                          // ── Verified Phone Card ───────────────────────────
+                          _VerifiedPhoneCard(
+                            phoneNumber: widget.phoneNumber,
+                            sh: sh,
+                          ),
+
+                          SizedBox(height: sh * 0.024),
+
+                          // ── Full Name Field ──────────────────────────────
+                          _CustomInputField(
+                            label: 'الاسم بالكامل',
+                            hint: 'مثال: أحمد محمد علي',
                             controller: _nameController,
                             focusNode: _nameFocus,
                             keyboardType: TextInputType.name,
+                            textInputAction: TextInputAction.next,
+                            prefixIcon: Icons.badge_outlined,
                             onSubmitted: (_) =>
-                                _emailFocus.requestFocus(),
+                                _passwordFocus.requestFocus(),
                           ),
 
-                          SizedBox(height: sh * 0.022),
+                          SizedBox(height: sh * 0.020),
 
-                          // ── Phone field (read-only) ────────────────────────
-                          _LabeledField(
-                            label: 'رقم الهاتف',
-                            hint: widget.phoneNumber,
-                            controller: TextEditingController(
-                              text: widget.phoneNumber,
+                          // ── Password Field ───────────────────────────────
+                          _CustomInputField(
+                            label: 'كلمة المرور',
+                            hint: '8 أحرف على الأقل (أرقام وحروف)',
+                            controller: _passwordController,
+                            focusNode: _passwordFocus,
+                            obscureText: _obscurePassword,
+                            textInputAction: TextInputAction.next,
+                            prefixIcon: Icons.lock_outline_rounded,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                                color: AppColors.textSecondary,
+                                size: sh * 0.024,
+                              ),
+                              onPressed: () => setState(
+                                  () => _obscurePassword = !_obscurePassword),
                             ),
-                            focusNode: FocusNode(),
-                            readOnly: true,
-                          ),
-
-                          SizedBox(height: sh * 0.022),
-
-                          // ── Email field ───────────────────────────────────
-                          _LabeledField(
-                            label: 'البريد الإلكتروني (اختياري)',
-                            hint: 'example@email.com',
-                            controller: _emailController,
-                            focusNode: _emailFocus,
-                            keyboardType: TextInputType.emailAddress,
                             onSubmitted: (_) =>
-                                FocusScope.of(context).unfocus(),
+                                _confirmPasswordFocus.requestFocus(),
                           ),
 
-                          SizedBox(height: sh * 0.04),
+                          SizedBox(height: sh * 0.020),
 
-                          // ── Continue button ───────────────────────────────
+                          // ── Confirm Password Field ────────────────────────
+                          _CustomInputField(
+                            label: 'تأكيد كلمة المرور',
+                            hint: 'أعد إدخال كلمة المرور',
+                            controller: _confirmPasswordController,
+                            focusNode: _confirmPasswordFocus,
+                            obscureText: _obscureConfirmPassword,
+                            textInputAction: TextInputAction.done,
+                            prefixIcon: Icons.lock_reset_rounded,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscureConfirmPassword
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                                color: AppColors.textSecondary,
+                                size: sh * 0.024,
+                              ),
+                              onPressed: () => setState(() =>
+                                  _obscureConfirmPassword =
+                                      !_obscureConfirmPassword),
+                            ),
+                            onSubmitted: (_) => _submitRegistration(),
+                          ),
+
+                          if (_confirmPasswordController.text.isNotEmpty) ...[
+                            SizedBox(height: sh * 0.010),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Text(
+                                  _doPasswordsMatch
+                                      ? 'كلمتا المرور متطابقتان'
+                                      : 'كلمتا المرور غير متطابقتين',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: sh * 0.014,
+                                    fontWeight: FontWeight.w600,
+                                    color: _doPasswordsMatch
+                                        ? AppColors.primary
+                                        : AppColors.error,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Icon(
+                                  _doPasswordsMatch
+                                      ? Icons.check_circle_rounded
+                                      : Icons.cancel_rounded,
+                                  size: sh * 0.018,
+                                  color: _doPasswordsMatch
+                                      ? AppColors.primary
+                                      : AppColors.error,
+                                ),
+                              ],
+                            ),
+                          ],
+
+                          SizedBox(height: sh * 0.034),
+
+                          // ── Submit Button ────────────────────────────────
                           _PrimaryButton(
-                            id: 'btn_continue',
-                            label: 'متابعة',
-                            enabled: _canContinue,
-                            onPressed: _continue,
+                            id: 'btn_register_submit',
+                            label: 'إنشاء الحساب ومتابعة',
+                            enabled: _canSubmit,
+                            isLoading: _isLoading,
+                            onPressed: _submitRegistration,
                           ),
 
-                          SizedBox(height: sh * 0.04 + bottom),
+                          SizedBox(height: sh * 0.03 + bottom),
                         ],
                       ),
                     ),
@@ -189,92 +441,94 @@ class _ProfileCompletionPageState extends State<ProfileCompletionPage>
   }
 }
 
-// ── Avatar Picker ─────────────────────────────────────────────────────────────
+// ── Verified Phone Card ───────────────────────────────────────────────────────
 
-class _AvatarPicker extends StatefulWidget {
-  const _AvatarPicker({required this.size});
+class _VerifiedPhoneCard extends StatelessWidget {
+  const _VerifiedPhoneCard({
+    required this.phoneNumber,
+    required this.sh,
+  });
 
-  final double size;
-
-  @override
-  State<_AvatarPicker> createState() => _AvatarPickerState();
-}
-
-class _AvatarPickerState extends State<_AvatarPicker> {
-  bool _hasImage = false;
+  final String phoneNumber;
+  final double sh;
 
   @override
   Widget build(BuildContext context) {
-    final s = widget.size;
-
-    return GestureDetector(
-      onTap: () {
-        // TODO: image picker
-      },
-      child: Stack(
-        clipBehavior: Clip.none,
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: sh * 0.020,
+        vertical: sh * 0.014,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border, width: 1.2),
+      ),
+      child: Row(
         children: [
-          // Avatar circle
+          // Verified Badge
           Container(
-            width: s,
-            height: s,
+            padding: EdgeInsets.symmetric(
+              horizontal: sh * 0.012,
+              vertical: sh * 0.005,
+            ),
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.surface,
-              border: Border.all(color: AppColors.border, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withAlpha(25),
-                  blurRadius: 20,
-                  spreadRadius: 2,
+              color: AppColors.primary.withAlpha(30),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.verified_rounded,
+                  color: AppColors.primary,
+                  size: sh * 0.018,
+                ),
+                SizedBox(width: sh * 0.005),
+                Text(
+                  'تم التحقق',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: sh * 0.014,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
                 ),
               ],
             ),
-            child: Icon(
-              Icons.person_rounded,
-              color: AppColors.textSecondary,
-              size: s * 0.55,
+          ),
+          const Spacer(),
+          Text(
+            phoneNumber,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: sh * 0.019,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+              letterSpacing: 1.2,
             ),
           ),
-
-          // Camera badge
-          Positioned(
-            bottom: 0,
-            right: 0,
-            child: Container(
-              width: s * 0.32,
-              height: s * 0.32,
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: AppColors.background,
-                  width: 2.5,
-                ),
-              ),
-              child: Icon(
-                Icons.camera_alt_rounded,
-                color: AppColors.textOnPrimary,
-                size: s * 0.17,
-              ),
-            ),
-          ),
+          SizedBox(width: sh * 0.010),
+          Text('🇪🇬', style: TextStyle(fontSize: sh * 0.022)),
         ],
       ),
     );
   }
 }
 
-// ── Labeled Field ─────────────────────────────────────────────────────────────
+// ── Custom Input Field ────────────────────────────────────────────────────────
 
-class _LabeledField extends StatelessWidget {
-  const _LabeledField({
+class _CustomInputField extends StatelessWidget {
+  const _CustomInputField({
     required this.label,
     required this.hint,
     required this.controller,
     required this.focusNode,
     this.keyboardType = TextInputType.text,
-    this.readOnly = false,
+    this.textInputAction = TextInputAction.next,
+    this.obscureText = false,
+    this.prefixIcon,
+    this.suffixIcon,
     this.onSubmitted,
   });
 
@@ -283,7 +537,10 @@ class _LabeledField extends StatelessWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
   final TextInputType keyboardType;
-  final bool readOnly;
+  final TextInputAction textInputAction;
+  final bool obscureText;
+  final IconData? prefixIcon;
+  final Widget? suffixIcon;
   final ValueChanged<String>? onSubmitted;
 
   @override
@@ -293,57 +550,67 @@ class _LabeledField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        // Label
         Text(
           label,
           style: TextStyle(
             fontFamily: 'Cairo',
             fontSize: sh * 0.016,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
             color: AppColors.textSecondary,
           ),
         ),
         SizedBox(height: sh * 0.008),
-
-        // Input
         Container(
-          height: sh * 0.072,
+          height: sh * 0.070,
           decoration: BoxDecoration(
-            color: readOnly
-                ? AppColors.surface.withAlpha(180)
-                : AppColors.surface,
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: readOnly ? AppColors.border.withAlpha(120) : AppColors.border,
-              width: 1.2,
-            ),
+            border: Border.all(color: AppColors.border, width: 1.2),
           ),
-          child: TextField(
-            controller: controller,
-            focusNode: focusNode,
-            keyboardType: keyboardType,
-            readOnly: readOnly,
-            textAlign: TextAlign.right,
-            textAlignVertical: TextAlignVertical.center,
-            style: TextStyle(
-              fontFamily: 'Cairo',
-              fontSize: sh * 0.019,
-              fontWeight: FontWeight.w500,
-              color: readOnly ? AppColors.textSecondary : AppColors.textPrimary,
-              letterSpacing: readOnly ? 1.0 : 0,
-            ),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: sh * 0.018,
-                color: AppColors.textDisabled,
+          child: Row(
+            children: [
+              ?suffixIcon,
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  keyboardType: keyboardType,
+                  textInputAction: textInputAction,
+                  obscureText: obscureText,
+                  textAlign: TextAlign.right,
+                  textAlignVertical: TextAlignVertical.center,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: sh * 0.019,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: hint,
+                    hintStyle: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: sh * 0.016,
+                      color: AppColors.textDisabled,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: sh * 0.018,
+                    ),
+                  ),
+                  onSubmitted: onSubmitted,
+                ),
               ),
-              border: InputBorder.none,
-              contentPadding:
-                  EdgeInsets.symmetric(horizontal: sh * 0.018),
-            ),
-            onSubmitted: onSubmitted,
+              if (prefixIcon != null) ...[
+                Padding(
+                  padding: EdgeInsets.only(right: sh * 0.016),
+                  child: Icon(
+                    prefixIcon,
+                    color: AppColors.textSecondary,
+                    size: sh * 0.024,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       ],
@@ -390,12 +657,14 @@ class _PrimaryButton extends StatefulWidget {
     required this.label,
     required this.onPressed,
     this.enabled = true,
+    this.isLoading = false,
   });
 
   final String id;
   final String label;
   final VoidCallback onPressed;
   final bool enabled;
+  final bool isLoading;
 
   @override
   State<_PrimaryButton> createState() => _PrimaryButtonState();
@@ -407,11 +676,11 @@ class _PrimaryButtonState extends State<_PrimaryButton> {
   @override
   Widget build(BuildContext context) {
     final sh = MediaQuery.sizeOf(context).height;
+    final active = widget.enabled && !widget.isLoading;
 
     return GestureDetector(
-      onTapDown:
-          widget.enabled ? (_) => setState(() => _pressed = true) : null,
-      onTapUp: widget.enabled
+      onTapDown: active ? (_) => setState(() => _pressed = true) : null,
+      onTapUp: active
           ? (_) {
               setState(() => _pressed = false);
               widget.onPressed();
@@ -422,7 +691,7 @@ class _PrimaryButtonState extends State<_PrimaryButton> {
         scale: _pressed ? 0.97 : 1.0,
         duration: const Duration(milliseconds: 100),
         child: AnimatedOpacity(
-          opacity: widget.enabled ? 1.0 : 0.45,
+          opacity: active ? 1.0 : 0.45,
           duration: const Duration(milliseconds: 200),
           child: Container(
             key: ValueKey(widget.id),
@@ -431,7 +700,7 @@ class _PrimaryButtonState extends State<_PrimaryButton> {
             decoration: BoxDecoration(
               color: AppColors.primary,
               borderRadius: BorderRadius.circular(14),
-              boxShadow: widget.enabled
+              boxShadow: active
                   ? [
                       BoxShadow(
                         color: AppColors.primary.withAlpha(80),
@@ -442,15 +711,24 @@ class _PrimaryButtonState extends State<_PrimaryButton> {
                   : null,
             ),
             alignment: Alignment.center,
-            child: Text(
-              widget.label,
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: sh * 0.02,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textOnPrimary,
-              ),
-            ),
+            child: widget.isLoading
+                ? SizedBox(
+                    width: sh * 0.030,
+                    height: sh * 0.030,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: AppColors.textOnPrimary,
+                    ),
+                  )
+                : Text(
+                    widget.label,
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: sh * 0.02,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textOnPrimary,
+                    ),
+                  ),
           ),
         ),
       ),

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../../../../core/theme/app_colors.dart';
+import '../../../../app/di/injection.dart';
 import '../../../../app/router/routes.dart';
+import '../../../../core/storage/preferences_storage.dart';
+import '../../../../core/theme/app_colors.dart';
 
 // ── Data model ────────────────────────────────────────────────────────────────
 
@@ -96,11 +97,15 @@ class _OnboardingPageState extends State<OnboardingPage>
         curve: Curves.easeInOutCubic,
       );
     } else {
+      getIt<PreferencesStorage>().setOnboardingComplete();
       context.go(AppRoutes.phoneAuth);
     }
   }
 
-  void _skip() => context.go(AppRoutes.phoneAuth);
+  void _skip() {
+    getIt<PreferencesStorage>().setOnboardingComplete();
+    context.go(AppRoutes.phoneAuth);
+  }
 
   void _onPageChanged(int index) {
     setState(() => _currentIndex = index);

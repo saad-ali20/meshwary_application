@@ -10,6 +10,7 @@ import 'app_spacing.dart';
 abstract final class AppTheme {
   static ThemeData get dark => ThemeData(
     useMaterial3: true,
+    fontFamily: 'Cairo',
     colorScheme: _colorScheme,
     scaffoldBackgroundColor: AppColors.background,
     splashFactory: InkRipple.splashFactory,
